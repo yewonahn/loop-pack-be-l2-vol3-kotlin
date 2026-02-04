@@ -47,9 +47,13 @@ class User private constructor(
         private const val NAME_MIN_LENGTH = 2
         private const val NAME_MAX_LENGTH = 20
 
+        /**
+         * User를 생성합니다.
+         * @param encodedPassword 이미 암호화된 비밀번호 (Service에서 검증 + 암호화 후 전달)
+         */
         fun create(
             loginId: String,
-            rawPassword: String,
+            encodedPassword: String,
             name: String,
             birthDate: LocalDate,
             email: String,
@@ -58,10 +62,9 @@ class User private constructor(
             validateEmail(email)
             validateName(name)
             validateBirthDate(birthDate)
-            val password = Password.of(rawPassword, birthDate)
             return User(
                 loginId = loginId,
-                password = password,
+                password = Password.fromEncoded(encodedPassword),
                 name = name,
                 birthDate = birthDate,
                 email = email,

@@ -21,7 +21,7 @@ class UserTest {
         fun success() {
             // arrange
             val loginId = "testuser"
-            val rawPassword = "Test123!"
+            val encodedPassword = "Test123!"
             val name = "홍길동"
             val birthDate = LocalDate.of(1990, 1, 1)
             val email = "test@example.com"
@@ -29,7 +29,7 @@ class UserTest {
             // act
             val user = User.create(
                 loginId = loginId,
-                rawPassword = rawPassword,
+                encodedPassword = encodedPassword,
                 name = name,
                 birthDate = birthDate,
                 email = email,
@@ -38,7 +38,7 @@ class UserTest {
             // assert
             assertAll(
                 { assertThat(user.loginId).isEqualTo(loginId) },
-                { assertThat(user.password.value).isEqualTo(rawPassword) },
+                { assertThat(user.password.value).isEqualTo(encodedPassword) },
                 { assertThat(user.name).isEqualTo(name) },
                 { assertThat(user.birthDate).isEqualTo(birthDate) },
                 { assertThat(user.email).isEqualTo(email) },
@@ -60,7 +60,7 @@ class UserTest {
             val exception = assertThrows<CoreException> {
                 User.create(
                     loginId = loginId,
-                    rawPassword = "Test123!",
+                    encodedPassword = "Test123!",
                     name = "홍길동",
                     birthDate = LocalDate.of(1990, 1, 1),
                     email = "test@example.com",
@@ -84,7 +84,7 @@ class UserTest {
             val exception = assertThrows<CoreException> {
                 User.create(
                     loginId = "testuser",
-                    rawPassword = "Test123!",
+                    encodedPassword = "Test123!",
                     name = "홍길동",
                     birthDate = LocalDate.of(1990, 1, 1),
                     email = email,
@@ -108,7 +108,7 @@ class UserTest {
             val exception = assertThrows<CoreException> {
                 User.create(
                     loginId = "testuser",
-                    rawPassword = "Test123!",
+                    encodedPassword = "Test123!",
                     name = name,
                     birthDate = LocalDate.of(1990, 1, 1),
                     email = "test@example.com",
@@ -127,7 +127,7 @@ class UserTest {
             val exception = assertThrows<CoreException> {
                 User.create(
                     loginId = "testuser",
-                    rawPassword = "Test123!",
+                    encodedPassword = "Test123!",
                     name = name,
                     birthDate = LocalDate.of(1990, 1, 1),
                     email = "test@example.com",
@@ -146,7 +146,7 @@ class UserTest {
             val exception = assertThrows<CoreException> {
                 User.create(
                     loginId = "testuser",
-                    rawPassword = "Test123!",
+                    encodedPassword = "Test123!",
                     name = name,
                     birthDate = LocalDate.of(1990, 1, 1),
                     email = "test@example.com",
@@ -170,7 +170,7 @@ class UserTest {
             val exception = assertThrows<CoreException> {
                 User.create(
                     loginId = "testuser",
-                    rawPassword = "Test123!",
+                    encodedPassword = "Test123!",
                     name = "홍길동",
                     birthDate = futureBirthDate,
                     email = "test@example.com",

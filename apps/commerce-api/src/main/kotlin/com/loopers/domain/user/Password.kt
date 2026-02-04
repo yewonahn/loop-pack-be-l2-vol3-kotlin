@@ -16,11 +16,26 @@ class Password protected constructor(
         private val ALLOWED_PATTERN = Regex("^[a-zA-Z0-9!@#\$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]+$")
         private val BIRTH_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd")
 
-        fun of(rawPassword: String, birthDate: LocalDate): Password {
+        /**
+         * 비밀번호 규칙을 검증합니다.
+         * - 8~16자
+         * - 영문 대소문자, 숫자, 특수문자만 허용
+         * - 생년월일 포함 불가
+         *
+         * 저장용 Password 객체를 생성하려면 fromEncoded()를 사용하세요.
+         */
+        fun validate(rawPassword: String, birthDate: LocalDate) {
             validateLength(rawPassword)
             validateFormat(rawPassword)
             validateNotContainsBirthDate(rawPassword, birthDate)
-            return Password(rawPassword)
+        }
+
+        /**
+         * 암호화된 비밀번호로 Password를 생성합니다.
+         * 반드시 validate()로 검증 후 사용하세요.
+         */
+        fun fromEncoded(encodedPassword: String): Password {
+            return Password(encodedPassword)
         }
 
         private fun validateLength(rawPassword: String) {

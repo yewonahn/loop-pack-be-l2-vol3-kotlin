@@ -14,4 +14,5 @@ enum class UserErrorCode(
     INVALID_PASSWORD_LENGTH(HttpStatus.BAD_REQUEST, "USER_005", "비밀번호는 8~16자여야 합니다."),
     INVALID_PASSWORD_FORMAT(HttpStatus.BAD_REQUEST, "USER_006", "비밀번호는 영문 대소문자, 숫자, 특수문자만 사용 가능합니다."),
     PASSWORD_CONTAINS_BIRTH_DATE(HttpStatus.BAD_REQUEST, "USER_007", "비밀번호에 생년월일을 포함할 수 없습니다."),
+    DUPLICATE_LOGIN_ID(HttpStatus.CONFLICT, "USER_008", "이미 사용 중인 로그인 ID입니다."),
 }
