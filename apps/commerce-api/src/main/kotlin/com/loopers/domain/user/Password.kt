@@ -2,11 +2,13 @@ package com.loopers.domain.user
 
 import com.loopers.support.error.CoreException
 import com.loopers.support.error.UserErrorCode
+import jakarta.persistence.Embeddable
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-class Password private constructor(
-    val value: String,
+@Embeddable
+class Password protected constructor(
+    val value: String = "",
 ) {
     companion object {
         private const val MIN_LENGTH = 8
