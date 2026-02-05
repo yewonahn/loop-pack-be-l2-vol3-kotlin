@@ -30,6 +30,10 @@ class UserFacade(
         return toUserInfo(user)
     }
 
+    fun changePassword(user: User, currentPassword: String, newPassword: String) {
+        userService.changePassword(user, currentPassword, newPassword)
+    }
+
     private fun toUserInfo(user: User): UserInfo {
         return UserInfo(
             loginId = user.loginId,

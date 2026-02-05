@@ -27,6 +27,7 @@ class UserV1ApiE2ETest @Autowired constructor(
     companion object {
         private const val REGISTER_ENDPOINT = "/api/v1/users"
         private const val ME_ENDPOINT = "/api/v1/users/me"
+        private const val CHANGE_PASSWORD_ENDPOINT = "/api/v1/users/me/password"
         private const val HEADER_LOGIN_ID = "X-Loopers-LoginId"
         private const val HEADER_LOGIN_PW = "X-Loopers-LoginPw"
     }
@@ -279,6 +280,139 @@ class UserV1ApiE2ETest @Autowired constructor(
 
             // assert
             assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
+        }
+    }
+
+    @DisplayName("PATCH /api/v1/users/me/password - 비밀번호 변경")
+    @Nested
+    inner class ChangePassword {
+
+        @DisplayName("현재 비밀번호가 맞고 새 비밀번호가 규칙을 만족하면 200 OK를 반환한다.")
+        @Test
+        fun success() {
+            // arrange - 회원가입
+            val loginId = "testuser"
+            val currentPassword = "OldPass123!"
+            val newPassword = "NewPass456!"
+            registerUser(loginId, currentPassword)
+
+            // act - 비밀번호 변경
+            val headers = HttpHeaders().apply {
+                set(HEADER_LOGIN_ID, loginId)
+                set(HEADER_LOGIN_PW, currentPassword)
+            }
+            val request = UserV1Dto.ChangePasswordRequest(
+                currentPassword = currentPassword,
+                newPassword = newPassword,
+            )
+            val response = testRestTemplate.exchange(
+                CHANGE_PASSWORD_ENDPOINT,
+                HttpMethod.PATCH,
+                HttpEntity(request, headers),
+                ApiResponse::class.java,
+            )
+
+            // assert
+            assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+
+            // 변경된 비밀번호로 인증 가능한지 확인
+            val newHeaders = HttpHeaders().apply {
+                set(HEADER_LOGIN_ID, loginId)
+                set(HEADER_LOGIN_PW, newPassword)
+            }
+            val meResponse = testRestTemplate.exchange(
+                ME_ENDPOINT,
+                HttpMethod.GET,
+                HttpEntity<Void>(newHeaders),
+                ApiResponse::class.java,
+            )
+            assertThat(meResponse.statusCode).isEqualTo(HttpStatus.OK)
+        }
+
+        @DisplayName("인증 헤더 누락 시 401 UNAUTHORIZED를 반환한다.")
+        @Test
+        fun failWhenHeaderMissing() {
+            // act - 헤더 없이 요청
+            val request = UserV1Dto.ChangePasswordRequest(
+                currentPassword = "OldPass123!",
+                newPassword = "NewPass456!",
+            )
+            val response = testRestTemplate.exchange(
+                CHANGE_PASSWORD_ENDPOINT,
+                HttpMethod.PATCH,
+                HttpEntity(request),
+                ApiResponse::class.java,
+            )
+
+            // assert
+            assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
+        }
+
+        @DisplayName("현재 비밀번호가 틀리면 400 BAD_REQUEST를 반환한다.")
+        @Test
+        fun failWhenCurrentPasswordIsWrong() {
+            // arrange - 회원가입
+            val loginId = "testuser"
+            val currentPassword = "Correct123!"
+            registerUser(loginId, currentPassword)
+
+            // act - 잘못된 현재 비밀번호로 변경 시도
+            val headers = HttpHeaders().apply {
+                set(HEADER_LOGIN_ID, loginId)
+                set(HEADER_LOGIN_PW, currentPassword)
+            }
+            val request = UserV1Dto.ChangePasswordRequest(
+                currentPassword = "WrongPass123!",
+                newPassword = "NewPass456!",
+            )
+            val response = testRestTemplate.exchange(
+                CHANGE_PASSWORD_ENDPOINT,
+                HttpMethod.PATCH,
+                HttpEntity(request, headers),
+                ApiResponse::class.java,
+            )
+
+            // assert
+            assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+        }
+
+        @DisplayName("새 비밀번호가 현재 비밀번호와 같으면 400 BAD_REQUEST를 반환한다.")
+        @Test
+        fun failWhenNewPasswordIsSameAsCurrent() {
+            // arrange - 회원가입
+            val loginId = "testuser"
+            val currentPassword = "SamePass123!"
+            registerUser(loginId, currentPassword)
+
+            // act - 같은 비밀번호로 변경 시도
+            val headers = HttpHeaders().apply {
+                set(HEADER_LOGIN_ID, loginId)
+                set(HEADER_LOGIN_PW, currentPassword)
+            }
+            val request = UserV1Dto.ChangePasswordRequest(
+                currentPassword = currentPassword,
+                newPassword = currentPassword,
+            )
+            val response = testRestTemplate.exchange(
+                CHANGE_PASSWORD_ENDPOINT,
+                HttpMethod.PATCH,
+                HttpEntity(request, headers),
+                ApiResponse::class.java,
+            )
+
+            // assert
+            assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+        }
+
+        private fun registerUser(loginId: String, password: String) {
+            val registerRequest = UserV1Dto.RegisterRequest(
+                loginId = loginId,
+                password = password,
+                name = "홍길동",
+                birthDate = "1990-01-01",
+                email = "test@example.com",
+            )
+            testRestTemplate.postForEntity(REGISTER_ENDPOINT, registerRequest, Any::class.java)
         }
     }
 }
