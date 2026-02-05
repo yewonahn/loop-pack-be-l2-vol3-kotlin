@@ -19,7 +19,7 @@ annotation class ValidDateFormat(
 
 class DateFormatValidator : ConstraintValidator<ValidDateFormat, String> {
     override fun isValid(value: String?, context: ConstraintValidatorContext): Boolean {
-        if (value.isNullOrBlank()) return true  // null/blank 체크는 @NotBlank에게 위임
+        if (value.isNullOrBlank()) return true // null/blank 체크는 @NotBlank에게 위임
 
         return try {
             LocalDate.parse(value)

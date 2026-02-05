@@ -65,7 +65,7 @@ class UserV1ApiE2ETest @Autowired constructor(
             assertAll(
                 { assertThat(response.statusCode).isEqualTo(HttpStatus.CREATED) },
                 { assertThat(response.body?.data?.loginId).isEqualTo("testuser") },
-                { assertThat(response.body?.data?.name).isEqualTo("홍길*") }, // 마스킹 확인
+                { assertThat(response.body?.data?.name).isEqualTo("홍길*") },
                 { assertThat(response.body?.data?.email).isEqualTo("test@example.com") },
             )
 

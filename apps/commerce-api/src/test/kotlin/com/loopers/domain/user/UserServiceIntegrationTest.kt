@@ -79,7 +79,7 @@ class UserServiceIntegrationTest @Autowired constructor(
             // act & assert
             val exception = assertThrows<CoreException> {
                 userService.register(
-                    loginId = loginId,  // 동일한 로그인 ID
+                    loginId = loginId,
                     rawPassword = "Test456!",
                     name = "신규회원",
                     birthDate = LocalDate.of(1995, 5, 5),

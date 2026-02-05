@@ -34,7 +34,7 @@ class PasswordTest {
         @Test
         fun successWithMinLength() {
             // arrange
-            val rawPassword = "Test123!"  // 8자
+            val rawPassword = "Test123!" // 8자
 
             // act & assert
             assertDoesNotThrow {
@@ -46,7 +46,7 @@ class PasswordTest {
         @Test
         fun successWithMaxLength() {
             // arrange
-            val rawPassword = "TestTest1234!@#$"  // 16자
+            val rawPassword = "TestTest1234!@#$" // 16자
 
             // act & assert
             assertDoesNotThrow {
@@ -63,7 +63,7 @@ class PasswordTest {
         @Test
         fun failWhenLessThan8() {
             // arrange
-            val rawPassword = "Test12!"  // 7자
+            val rawPassword = "Test12!" // 7자
 
             // act & assert
             val exception = assertThrows<CoreException> {
@@ -76,7 +76,7 @@ class PasswordTest {
         @Test
         fun failWhenMoreThan16() {
             // arrange
-            val rawPassword = "TestTest1234!@#$%"  // 17자
+            val rawPassword = "TestTest1234!@#$%" // 17자
 
             // act & assert
             val exception = assertThrows<CoreException> {
@@ -138,7 +138,7 @@ class PasswordTest {
         @Test
         fun failWhenContainsBirthDate() {
             // arrange
-            val rawPassword = "Pass19900101!"  // 생년월일 1990-01-01 포함
+            val rawPassword = "Pass19900101!" // 생년월일 1990-01-01 포함
 
             // act & assert
             val exception = assertThrows<CoreException> {

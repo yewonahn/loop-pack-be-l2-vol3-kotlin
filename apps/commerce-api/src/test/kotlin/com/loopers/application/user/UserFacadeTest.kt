@@ -59,7 +59,7 @@ class UserFacadeTest {
             // assert
             assertAll(
                 { assertThat(result.loginId).isEqualTo(loginId) },
-                { assertThat(result.name).isEqualTo("홍길*") },  // 마스킹 확인
+                { assertThat(result.name).isEqualTo("홍길*") },
                 { assertThat(result.birthDate).isEqualTo(birthDate) },
                 { assertThat(result.email).isEqualTo(email) },
             )

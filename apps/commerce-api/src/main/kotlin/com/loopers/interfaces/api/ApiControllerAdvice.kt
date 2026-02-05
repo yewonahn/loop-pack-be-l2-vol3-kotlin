@@ -120,7 +120,7 @@ class ApiControllerAdvice {
         return if (missingParams.isNotEmpty()) {
             failureResponse(
                 errorCode = CommonErrorCode.MISSING_REQUIRED_VALUE,
-                errorMessage = "필수 요청 값 '$missingParams'가 누락되었습니다."
+                errorMessage = "필수 요청 값 '$missingParams'가 누락되었습니다.",
             )
         } else {
             failureResponse(errorCode = CommonErrorCode.INVALID_INPUT_VALUE)
@@ -150,9 +150,16 @@ class ApiControllerAdvice {
             errorCode.status,
         )
 
-    private fun failureResponseWithFieldErrors(errorCode: ErrorCode, fieldErrors: Map<String, String>): ResponseEntity<ApiResponse<*>> =
+    private fun failureResponseWithFieldErrors(
+        errorCode: ErrorCode,
+        fieldErrors: Map<String, String>,
+    ): ResponseEntity<ApiResponse<*>> =
         ResponseEntity(
-            ApiResponse.failWithFieldErrors(errorCode = errorCode.code, errorMessage = errorCode.message, fieldErrors = fieldErrors),
+            ApiResponse.failWithFieldErrors(
+                errorCode = errorCode.code,
+                errorMessage = errorCode.message,
+                fieldErrors = fieldErrors,
+            ),
             errorCode.status,
         )
 }
