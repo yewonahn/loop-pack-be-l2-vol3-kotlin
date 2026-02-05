@@ -1,9 +1,8 @@
 package com.loopers.interfaces.api.user
 
 import com.loopers.application.user.UserFacade
-import com.loopers.domain.user.User
 import com.loopers.interfaces.api.ApiResponse
-import com.loopers.interfaces.api.auth.CurrentUser
+import com.loopers.interfaces.api.auth.CurrentUserId
 import com.loopers.support.constant.ApiPaths
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -37,17 +36,17 @@ class UserV1Controller(
     }
 
     @GetMapping("/me")
-    override fun getMe(@CurrentUser user: User): ApiResponse<UserV1Dto.UserResponse> {
-        val userInfo = userFacade.getMyInfo(user)
+    override fun getMe(@CurrentUserId userId: Long): ApiResponse<UserV1Dto.UserResponse> {
+        val userInfo = userFacade.getMyInfo(userId)
         return ApiResponse.success(UserV1Dto.UserResponse.from(userInfo))
     }
 
     @PatchMapping("/me/password")
     override fun changePassword(
-        @CurrentUser user: User,
+        @CurrentUserId userId: Long,
         @Valid @RequestBody request: UserV1Dto.ChangePasswordRequest,
     ): ApiResponse<Unit> {
-        userFacade.changePassword(user, request.currentPassword, request.newPassword)
+        userFacade.changePassword(userId, request.currentPassword, request.newPassword)
         return ApiResponse.success(Unit)
     }
 }

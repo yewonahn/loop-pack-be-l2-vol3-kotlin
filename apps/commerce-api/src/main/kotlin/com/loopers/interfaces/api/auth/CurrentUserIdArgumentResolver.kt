@@ -1,6 +1,5 @@
 package com.loopers.interfaces.api.auth
 
-import com.loopers.domain.user.User
 import com.loopers.domain.user.UserAuthService
 import com.loopers.support.error.UserException
 import org.springframework.core.MethodParameter
@@ -11,13 +10,13 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.method.support.ModelAndViewContainer
 
 @Component
-class CurrentUserArgumentResolver(
+class CurrentUserIdArgumentResolver(
     private val userAuthService: UserAuthService,
 ) : HandlerMethodArgumentResolver {
 
     override fun supportsParameter(parameter: MethodParameter): Boolean {
-        return parameter.hasParameterAnnotation(CurrentUser::class.java) &&
-            parameter.parameterType == User::class.java
+        return parameter.hasParameterAnnotation(CurrentUserId::class.java) &&
+            parameter.parameterType == Long::class.java
     }
 
     override fun resolveArgument(
@@ -25,13 +24,13 @@ class CurrentUserArgumentResolver(
         mavContainer: ModelAndViewContainer?,
         webRequest: NativeWebRequest,
         binderFactory: WebDataBinderFactory?,
-    ): User {
+    ): Long {
         val loginId = webRequest.getHeader(HEADER_LOGIN_ID)
             ?: throw UserException.invalidCredentials()
         val password = webRequest.getHeader(HEADER_LOGIN_PW)
             ?: throw UserException.invalidCredentials()
 
-        return userAuthService.authenticate(loginId, password)
+        return userAuthService.authenticateAndGetId(loginId, password)
     }
 
     companion object {

@@ -1,13 +1,17 @@
 package com.loopers.application.user
 
 import com.loopers.domain.user.User
+import com.loopers.domain.user.UserRepository
 import com.loopers.domain.user.UserService
+import com.loopers.support.error.UserException
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 
 @Component
 class UserFacade(
     private val userService: UserService,
+    private val userRepository: UserRepository,
 ) {
     fun register(
         loginId: String,
@@ -26,12 +30,15 @@ class UserFacade(
         return toUserInfo(user)
     }
 
-    fun getMyInfo(user: User): UserInfo {
+    @Transactional(readOnly = true)
+    fun getMyInfo(userId: Long): UserInfo {
+        val user = userRepository.findById(userId)
+            ?: throw UserException.invalidCredentials()
         return toUserInfo(user)
     }
 
-    fun changePassword(user: User, currentPassword: String, newPassword: String) {
-        userService.changePassword(user, currentPassword, newPassword)
+    fun changePassword(userId: Long, currentPassword: String, newPassword: String) {
+        userService.changePassword(userId, currentPassword, newPassword)
     }
 
     private fun toUserInfo(user: User): UserInfo {

@@ -19,4 +19,9 @@ class UserAuthService(
 
         return user
     }
+
+    fun authenticateAndGetId(loginId: String, rawPassword: String): Long {
+        val user = authenticate(loginId, rawPassword)
+        return requireNotNull(user.id) { "Authenticated user must have an id" }
+    }
 }

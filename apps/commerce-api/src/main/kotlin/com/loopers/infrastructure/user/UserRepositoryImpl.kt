@@ -9,6 +9,10 @@ class UserRepositoryImpl(
     private val userJpaRepository: UserJpaRepository,
 ) : UserRepository {
 
+    override fun findById(id: Long): User? {
+        return userJpaRepository.findById(id).orElse(null)
+    }
+
     override fun findByLoginId(loginId: String): User? {
         return userJpaRepository.findByLoginId(loginId)
     }

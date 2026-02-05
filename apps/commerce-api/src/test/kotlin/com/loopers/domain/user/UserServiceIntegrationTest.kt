@@ -109,7 +109,7 @@ class UserServiceIntegrationTest @Autowired constructor(
             )
 
             // act
-            userService.changePassword(user, currentPassword, newPassword)
+            userService.changePassword(user.id!!, currentPassword, newPassword)
 
             // assert
             val updatedUser = userJpaRepository.findById(user.id).get()
@@ -130,7 +130,7 @@ class UserServiceIntegrationTest @Autowired constructor(
 
             // act & assert
             val exception = assertThrows<CoreException> {
-                userService.changePassword(user, "WrongPass123!", "NewPass456!")
+                userService.changePassword(user.id!!, "WrongPass123!", "NewPass456!")
             }
             assertThat(exception.errorCode).isEqualTo(UserErrorCode.INVALID_CURRENT_PASSWORD)
         }
@@ -150,7 +150,7 @@ class UserServiceIntegrationTest @Autowired constructor(
 
             // act & assert
             val exception = assertThrows<CoreException> {
-                userService.changePassword(user, currentPassword, currentPassword)
+                userService.changePassword(user.id!!, currentPassword, currentPassword)
             }
             assertThat(exception.errorCode).isEqualTo(UserErrorCode.SAME_PASSWORD)
         }
@@ -170,7 +170,7 @@ class UserServiceIntegrationTest @Autowired constructor(
 
             // act & assert (8자 미만)
             val exception = assertThrows<CoreException> {
-                userService.changePassword(user, currentPassword, "Short1!")
+                userService.changePassword(user.id!!, currentPassword, "Short1!")
             }
             assertThat(exception.errorCode).isEqualTo(UserErrorCode.INVALID_PASSWORD_LENGTH)
         }

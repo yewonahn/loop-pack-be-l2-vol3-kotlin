@@ -1,6 +1,7 @@
 package com.loopers.application.user
 
 import com.loopers.domain.user.User
+import com.loopers.domain.user.UserRepository
 import com.loopers.domain.user.UserService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
@@ -20,6 +21,9 @@ class UserFacadeTest {
 
     @Mock
     private lateinit var userService: UserService
+
+    @Mock
+    private lateinit var userRepository: UserRepository
 
     @InjectMocks
     private lateinit var userFacade: UserFacade
