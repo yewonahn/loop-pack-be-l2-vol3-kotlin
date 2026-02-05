@@ -50,6 +50,44 @@ class UserTest {
     @Nested
     inner class FailByLoginId {
 
+        @DisplayName("로그인ID가 4자 미만이면 실패한다.")
+        @Test
+        fun failWhenLoginIdTooShort() {
+            // arrange
+            val loginId = "abc"
+
+            // act & assert
+            val exception = assertThrows<CoreException> {
+                User.create(
+                    loginId = loginId,
+                    encodedPassword = "Test123!",
+                    name = "홍길동",
+                    birthDate = LocalDate.of(1990, 1, 1),
+                    email = "test@example.com",
+                )
+            }
+            assertThat(exception.errorCode).isEqualTo(UserErrorCode.INVALID_LOGIN_ID_LENGTH)
+        }
+
+        @DisplayName("로그인ID가 20자 초과이면 실패한다.")
+        @Test
+        fun failWhenLoginIdTooLong() {
+            // arrange
+            val loginId = "a".repeat(21)
+
+            // act & assert
+            val exception = assertThrows<CoreException> {
+                User.create(
+                    loginId = loginId,
+                    encodedPassword = "Test123!",
+                    name = "홍길동",
+                    birthDate = LocalDate.of(1990, 1, 1),
+                    email = "test@example.com",
+                )
+            }
+            assertThat(exception.errorCode).isEqualTo(UserErrorCode.INVALID_LOGIN_ID_LENGTH)
+        }
+
         @DisplayName("로그인ID에 특수문자가 포함되면 실패한다.")
         @Test
         fun failWhenLoginIdContainsSpecialCharacter() {

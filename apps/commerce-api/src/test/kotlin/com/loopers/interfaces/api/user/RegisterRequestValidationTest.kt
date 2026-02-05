@@ -121,10 +121,25 @@ class RegisterRequestValidationTest {
             // assert
             assertThat(violations).isNotEmpty
             assertThat(violations.first { it.propertyPath.toString() == "password" }.message)
-                .isEqualTo("비밀번호는 8자 이상이어야 합니다.")
+                .isEqualTo("비밀번호는 8자 이상 16자 이하여야 합니다.")
         }
 
-        @DisplayName("password가 8자 이상이면 검증을 통과한다.")
+        @DisplayName("password가 16자 초과이면 검증에 실패한다.")
+        @Test
+        fun failWhenPasswordTooLong() {
+            // arrange
+            val request = createValidRequest(password = "VeryLongPass123!!")  // 17자
+
+            // act
+            val violations = validator.validate(request)
+
+            // assert
+            assertThat(violations).isNotEmpty
+            assertThat(violations.first { it.propertyPath.toString() == "password" }.message)
+                .isEqualTo("비밀번호는 8자 이상 16자 이하여야 합니다.")
+        }
+
+        @DisplayName("password가 8~16자이면 검증을 통과한다.")
         @Test
         fun successWhenPasswordValid() {
             // arrange
@@ -157,11 +172,11 @@ class RegisterRequestValidationTest {
             assertThat(violations.map { it.propertyPath.toString() }).contains("name")
         }
 
-        @DisplayName("name이 50자 초과이면 검증에 실패한다.")
+        @DisplayName("name이 2자 미만이면 검증에 실패한다.")
         @Test
-        fun failWhenNameTooLong() {
+        fun failWhenNameTooShort() {
             // arrange
-            val request = createValidRequest(name = "가".repeat(51))
+            val request = createValidRequest(name = "홍")
 
             // act
             val violations = validator.validate(request)
@@ -169,7 +184,35 @@ class RegisterRequestValidationTest {
             // assert
             assertThat(violations).isNotEmpty
             assertThat(violations.first { it.propertyPath.toString() == "name" }.message)
-                .isEqualTo("이름은 50자 이하여야 합니다.")
+                .isEqualTo("이름은 2자 이상 20자 이하여야 합니다.")
+        }
+
+        @DisplayName("name이 20자 초과이면 검증에 실패한다.")
+        @Test
+        fun failWhenNameTooLong() {
+            // arrange
+            val request = createValidRequest(name = "가".repeat(21))
+
+            // act
+            val violations = validator.validate(request)
+
+            // assert
+            assertThat(violations).isNotEmpty
+            assertThat(violations.first { it.propertyPath.toString() == "name" }.message)
+                .isEqualTo("이름은 2자 이상 20자 이하여야 합니다.")
+        }
+
+        @DisplayName("name이 2~20자이면 검증을 통과한다.")
+        @Test
+        fun successWhenNameValid() {
+            // arrange
+            val request = createValidRequest(name = "홍길동")
+
+            // act
+            val violations = validator.validate(request)
+
+            // assert
+            assertThat(violations.filter { it.propertyPath.toString() == "name" }).isEmpty()
         }
     }
 

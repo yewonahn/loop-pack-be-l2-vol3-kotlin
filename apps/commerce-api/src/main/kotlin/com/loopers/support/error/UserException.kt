@@ -11,6 +11,8 @@ class UserException private constructor(
 
         fun invalidLoginIdFormat() = UserException(UserErrorCode.INVALID_LOGIN_ID_FORMAT)
 
+        fun invalidLoginIdLength() = UserException(UserErrorCode.INVALID_LOGIN_ID_LENGTH)
+
         fun invalidEmailFormat() = UserException(UserErrorCode.INVALID_EMAIL_FORMAT)
 
         fun invalidNameFormat() = UserException(UserErrorCode.INVALID_NAME_FORMAT)

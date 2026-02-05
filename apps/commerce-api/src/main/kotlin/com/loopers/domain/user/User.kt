@@ -45,6 +45,8 @@ class User private constructor(
     }
 
     companion object {
+        private const val LOGIN_ID_MIN_LENGTH = 4
+        private const val LOGIN_ID_MAX_LENGTH = 20
         private val LOGIN_ID_PATTERN = Regex("^[a-zA-Z0-9]+$")
         private val EMAIL_PATTERN = Regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")
         private const val NAME_MIN_LENGTH = 2
@@ -75,6 +77,9 @@ class User private constructor(
         }
 
         private fun validateLoginId(loginId: String) {
+            if (loginId.length < LOGIN_ID_MIN_LENGTH || loginId.length > LOGIN_ID_MAX_LENGTH) {
+                throw UserException.invalidLoginIdLength()
+            }
             if (!loginId.matches(LOGIN_ID_PATTERN)) {
                 throw UserException.invalidLoginIdFormat()
             }

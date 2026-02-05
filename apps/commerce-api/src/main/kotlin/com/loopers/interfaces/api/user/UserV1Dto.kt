@@ -15,11 +15,11 @@ class UserV1Dto {
         val loginId: String,
 
         @field:NotBlank(message = "비밀번호는 필수입니다.")
-        @field:Size(min = 8, message = "비밀번호는 8자 이상이어야 합니다.")
+        @field:Size(min = 8, max = 16, message = "비밀번호는 8자 이상 16자 이하여야 합니다.")
         val password: String,
 
         @field:NotBlank(message = "이름은 필수입니다.")
-        @field:Size(max = 50, message = "이름은 50자 이하여야 합니다.")
+        @field:Size(min = 2, max = 20, message = "이름은 2자 이상 20자 이하여야 합니다.")
         val name: String,
 
         @field:NotBlank(message = "생년월일은 필수입니다.")
@@ -56,7 +56,7 @@ class UserV1Dto {
         val currentPassword: String,
 
         @field:NotBlank(message = "새 비밀번호는 필수입니다.")
-        @field:Size(min = 8, message = "비밀번호는 8자 이상이어야 합니다.")
+        @field:Size(min = 8, max = 16, message = "비밀번호는 8자 이상 16자 이하여야 합니다.")
         val newPassword: String,
     )
 }
