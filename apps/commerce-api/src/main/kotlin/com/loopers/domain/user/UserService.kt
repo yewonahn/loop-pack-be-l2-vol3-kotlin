@@ -35,4 +35,21 @@ class UserService(
         )
         return userRepository.save(user)
     }
+
+    @Transactional
+    fun changePassword(user: User, currentPassword: String, newPassword: String) {
+        if (!passwordEncoder.matches(currentPassword, user.password.value)) {
+            throw UserException.invalidCurrentPassword()
+        }
+
+        if (passwordEncoder.matches(newPassword, user.password.value)) {
+            throw UserException.samePassword()
+        }
+
+        Password.validate(newPassword, user.birthDate)
+
+        val newEncodedPassword = passwordEncoder.encode(newPassword)
+        user.changePassword(newEncodedPassword)
+        userRepository.save(user)
+    }
 }

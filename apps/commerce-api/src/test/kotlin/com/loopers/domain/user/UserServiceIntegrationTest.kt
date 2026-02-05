@@ -89,4 +89,90 @@ class UserServiceIntegrationTest @Autowired constructor(
             assertThat(exception.errorCode).isEqualTo(UserErrorCode.DUPLICATE_LOGIN_ID)
         }
     }
+
+    @DisplayName("비밀번호 변경")
+    @Nested
+    inner class ChangePassword {
+
+        @DisplayName("현재 비밀번호가 일치하고 새 비밀번호가 규칙을 만족하면 성공한다.")
+        @Test
+        fun success() {
+            // arrange
+            val currentPassword = "OldPass123!"
+            val newPassword = "NewPass456!"
+            val user = userService.register(
+                loginId = "testuser",
+                rawPassword = currentPassword,
+                name = "홍길동",
+                birthDate = LocalDate.of(1990, 1, 1),
+                email = "test@example.com",
+            )
+
+            // act
+            userService.changePassword(user, currentPassword, newPassword)
+
+            // assert
+            val updatedUser = userJpaRepository.findById(user.id).get()
+            assertThat(passwordEncoder.matches(newPassword, updatedUser.password.value)).isTrue()
+        }
+
+        @DisplayName("현재 비밀번호가 틀리면 INVALID_CURRENT_PASSWORD 예외가 발생한다.")
+        @Test
+        fun failWhenCurrentPasswordIsWrong() {
+            // arrange
+            val user = userService.register(
+                loginId = "testuser",
+                rawPassword = "Correct123!",
+                name = "홍길동",
+                birthDate = LocalDate.of(1990, 1, 1),
+                email = "test@example.com",
+            )
+
+            // act & assert
+            val exception = assertThrows<CoreException> {
+                userService.changePassword(user, "WrongPass123!", "NewPass456!")
+            }
+            assertThat(exception.errorCode).isEqualTo(UserErrorCode.INVALID_CURRENT_PASSWORD)
+        }
+
+        @DisplayName("새 비밀번호가 현재 비밀번호와 같으면 SAME_PASSWORD 예외가 발생한다.")
+        @Test
+        fun failWhenNewPasswordIsSameAsCurrent() {
+            // arrange
+            val currentPassword = "SamePass123!"
+            val user = userService.register(
+                loginId = "testuser",
+                rawPassword = currentPassword,
+                name = "홍길동",
+                birthDate = LocalDate.of(1990, 1, 1),
+                email = "test@example.com",
+            )
+
+            // act & assert
+            val exception = assertThrows<CoreException> {
+                userService.changePassword(user, currentPassword, currentPassword)
+            }
+            assertThat(exception.errorCode).isEqualTo(UserErrorCode.SAME_PASSWORD)
+        }
+
+        @DisplayName("새 비밀번호가 규칙을 위반하면 예외가 발생한다.")
+        @Test
+        fun failWhenNewPasswordViolatesRule() {
+            // arrange
+            val currentPassword = "OldPass123!"
+            val user = userService.register(
+                loginId = "testuser",
+                rawPassword = currentPassword,
+                name = "홍길동",
+                birthDate = LocalDate.of(1990, 1, 1),
+                email = "test@example.com",
+            )
+
+            // act & assert (8자 미만)
+            val exception = assertThrows<CoreException> {
+                userService.changePassword(user, currentPassword, "Short1!")
+            }
+            assertThat(exception.errorCode).isEqualTo(UserErrorCode.INVALID_PASSWORD_LENGTH)
+        }
+    }
 }
