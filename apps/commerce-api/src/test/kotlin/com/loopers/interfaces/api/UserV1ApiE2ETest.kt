@@ -3,6 +3,8 @@ package com.loopers.interfaces.api
 import com.loopers.infrastructure.user.UserJpaRepository
 import com.loopers.interfaces.api.user.UserV1Dto
 import com.loopers.support.constant.ApiPaths
+import com.loopers.support.error.CommonErrorCode
+import com.loopers.support.error.UserErrorCode
 import com.loopers.utils.DatabaseCleanUp
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -73,7 +75,7 @@ class UserV1ApiE2ETest @Autowired constructor(
             assertThat(savedUser).isNotNull
         }
 
-        @DisplayName("이미 존재하는 로그인 ID로 가입하면, 409 CONFLICT를 반환한다.")
+        @DisplayName("이미 존재하는 로그인 ID로 가입하면, 409 CONFLICT와 USER_008 에러를 반환한다.")
         @Test
         fun failWhenDuplicateLoginId() {
             // arrange - 먼저 회원가입
@@ -105,10 +107,13 @@ class UserV1ApiE2ETest @Autowired constructor(
             )
 
             // assert
-            assertThat(response.statusCode).isEqualTo(HttpStatus.CONFLICT)
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.CONFLICT) },
+                { assertThat(response.body?.meta?.errorCode).isEqualTo(UserErrorCode.DUPLICATE_LOGIN_ID.code) },
+            )
         }
 
-        @DisplayName("비밀번호가 8자 미만이면, 400 BAD_REQUEST를 반환한다.")
+        @DisplayName("비밀번호가 8자 미만이면, 400 BAD_REQUEST와 COMMON_002 에러를 반환한다.")
         @Test
         fun failWhenPasswordTooShort() {
             // arrange
@@ -128,10 +133,14 @@ class UserV1ApiE2ETest @Autowired constructor(
             )
 
             // assert
-            assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST) },
+                { assertThat(response.body?.meta?.errorCode).isEqualTo(CommonErrorCode.INVALID_INPUT_VALUE.code) },
+                { assertThat(response.body?.meta?.fieldErrors).containsKey("password") },
+            )
         }
 
-        @DisplayName("생년월일 형식이 잘못되면, 400 BAD_REQUEST를 반환한다.")
+        @DisplayName("생년월일 형식이 잘못되면, 400 BAD_REQUEST와 COMMON_002 에러를 반환한다.")
         @Test
         fun failWhenBirthDateFormatInvalid() {
             // arrange
@@ -151,10 +160,14 @@ class UserV1ApiE2ETest @Autowired constructor(
             )
 
             // assert
-            assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST) },
+                { assertThat(response.body?.meta?.errorCode).isEqualTo(CommonErrorCode.INVALID_INPUT_VALUE.code) },
+                { assertThat(response.body?.meta?.fieldErrors).containsKey("birthDate") },
+            )
         }
 
-        @DisplayName("이메일 형식이 잘못되면, 400 BAD_REQUEST를 반환한다.")
+        @DisplayName("이메일 형식이 잘못되면, 400 BAD_REQUEST와 COMMON_002 에러를 반환한다.")
         @Test
         fun failWhenEmailFormatInvalid() {
             // arrange
@@ -174,7 +187,11 @@ class UserV1ApiE2ETest @Autowired constructor(
             )
 
             // assert
-            assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST) },
+                { assertThat(response.body?.meta?.errorCode).isEqualTo(CommonErrorCode.INVALID_INPUT_VALUE.code) },
+                { assertThat(response.body?.meta?.fieldErrors).containsKey("email") },
+            )
         }
     }
 
@@ -220,17 +237,20 @@ class UserV1ApiE2ETest @Autowired constructor(
             )
         }
 
-        @DisplayName("인증 헤더 누락 시 401 UNAUTHORIZED를 반환한다.")
+        @DisplayName("인증 헤더 누락 시 401 UNAUTHORIZED와 USER_010 에러를 반환한다.")
         @Test
         fun failWhenHeaderMissing() {
             // act - 헤더 없이 요청
             val response = testRestTemplate.getForEntity(ApiPaths.Users.ME, ApiResponse::class.java)
 
             // assert
-            assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED) },
+                { assertThat(response.body?.meta?.errorCode).isEqualTo(UserErrorCode.AUTHENTICATION_FAILED.code) },
+            )
         }
 
-        @DisplayName("잘못된 비밀번호 시 401 UNAUTHORIZED를 반환한다.")
+        @DisplayName("잘못된 비밀번호 시 401 UNAUTHORIZED와 USER_010 에러를 반환한다.")
         @Test
         fun failWhenPasswordNotMatched() {
             // arrange - 회원가입
@@ -258,10 +278,13 @@ class UserV1ApiE2ETest @Autowired constructor(
             )
 
             // assert
-            assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED) },
+                { assertThat(response.body?.meta?.errorCode).isEqualTo(UserErrorCode.AUTHENTICATION_FAILED.code) },
+            )
         }
 
-        @DisplayName("존재하지 않는 사용자 시 401 UNAUTHORIZED를 반환한다.")
+        @DisplayName("존재하지 않는 사용자 시 401 UNAUTHORIZED와 USER_010 에러를 반환한다.")
         @Test
         fun failWhenUserNotFound() {
             // act - 존재하지 않는 사용자로 조회
@@ -277,7 +300,10 @@ class UserV1ApiE2ETest @Autowired constructor(
             )
 
             // assert
-            assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED) },
+                { assertThat(response.body?.meta?.errorCode).isEqualTo(UserErrorCode.AUTHENTICATION_FAILED.code) },
+            )
         }
     }
 
@@ -327,7 +353,7 @@ class UserV1ApiE2ETest @Autowired constructor(
             assertThat(meResponse.statusCode).isEqualTo(HttpStatus.OK)
         }
 
-        @DisplayName("인증 헤더 누락 시 401 UNAUTHORIZED를 반환한다.")
+        @DisplayName("인증 헤더 누락 시 401 UNAUTHORIZED와 USER_010 에러를 반환한다.")
         @Test
         fun failWhenHeaderMissing() {
             // act - 헤더 없이 요청
@@ -343,10 +369,13 @@ class UserV1ApiE2ETest @Autowired constructor(
             )
 
             // assert
-            assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED) },
+                { assertThat(response.body?.meta?.errorCode).isEqualTo(UserErrorCode.AUTHENTICATION_FAILED.code) },
+            )
         }
 
-        @DisplayName("현재 비밀번호가 틀리면 400 BAD_REQUEST를 반환한다.")
+        @DisplayName("현재 비밀번호가 틀리면 400 BAD_REQUEST와 USER_011 에러를 반환한다.")
         @Test
         fun failWhenCurrentPasswordIsWrong() {
             // arrange - 회원가입
@@ -371,10 +400,13 @@ class UserV1ApiE2ETest @Autowired constructor(
             )
 
             // assert
-            assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST) },
+                { assertThat(response.body?.meta?.errorCode).isEqualTo(UserErrorCode.INVALID_CURRENT_PASSWORD.code) },
+            )
         }
 
-        @DisplayName("새 비밀번호가 현재 비밀번호와 같으면 400 BAD_REQUEST를 반환한다.")
+        @DisplayName("새 비밀번호가 현재 비밀번호와 같으면 400 BAD_REQUEST와 USER_012 에러를 반환한다.")
         @Test
         fun failWhenNewPasswordIsSameAsCurrent() {
             // arrange - 회원가입
@@ -399,7 +431,10 @@ class UserV1ApiE2ETest @Autowired constructor(
             )
 
             // assert
-            assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+            assertAll(
+                { assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST) },
+                { assertThat(response.body?.meta?.errorCode).isEqualTo(UserErrorCode.SAME_PASSWORD.code) },
+            )
         }
 
         private fun registerUser(loginId: String, password: String) {
