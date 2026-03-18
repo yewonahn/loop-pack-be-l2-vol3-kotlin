@@ -13,4 +13,11 @@ object ApiPaths {
         const val BASE = "/api/v1/examples"
         const val BY_ID = "$BASE/{id}"
     }
+
+    object Payments {
+        const val BASE = "/api/v1/payments"
+        const val CALLBACK = "$BASE/callback"
+        const val BY_ID = "$BASE/{paymentId}"
+        const val RECOVER = "$BASE/{paymentId}/recover"
+    }
 }
