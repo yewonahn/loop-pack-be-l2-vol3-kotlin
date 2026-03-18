@@ -29,6 +29,28 @@ pg:
     url: http://localhost:8081
     callback-url: http://localhost:8080/api/v1/payments/callback
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      pgPayment:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 4s
+        slow-call-rate-threshold: 80
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        minimum-number-of-calls: 5
+  retry:
+    instances:
+      pgPayment:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - feign.RetryableException
+          - java.net.SocketTimeoutException
+          - java.net.ConnectException
+
 springdoc:
   use-fqn: true
   swagger-ui:
