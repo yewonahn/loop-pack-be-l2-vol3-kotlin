@@ -22,10 +22,8 @@ class RequestPaymentUseCase(
     private val log = LoggerFactory.getLogger(javaClass)
 
     fun execute(command: PaymentCommand.Request): PaymentInfo {
-        // TX-1: Order 존재 확인 + Payment 저장 (REQUESTED)
         val payment = savePayment(command)
 
-        // No TX: PG API 호출 (외부 시스템)
         try {
             val pgResponse = pgPaymentClient.requestPayment(
                 PgPaymentRequest(
@@ -36,11 +34,9 @@ class RequestPaymentUseCase(
                     callbackUrl = callbackUrl,
                 ),
             )
-            // TX-2: 성공 → transactionId 저장
             return updateTransactionId(payment.id, pgResponse.transactionId)
         } catch (e: Exception) {
             log.warn("PG 결제 요청 실패 [pgOrderId={}]: {}", payment.pgOrderId, e.message)
-            // TX-2: 실패 → REQUEST_FAILED
             return markRequestFailed(payment.id, e.message)
         }
     }
