@@ -207,4 +207,116 @@ class PaymentTest {
             assertThat(exception.errorCode).isEqualTo(PaymentErrorCode.INVALID_PAYMENT_STATUS)
         }
     }
+
+    @DisplayName("재시도 리셋")
+    @Nested
+    inner class ResetForRetry {
+
+        @DisplayName("FAILED 상태에서 REQUESTED로 리셋된다.")
+        @Test
+        fun resetFromFailed() {
+            // arrange
+            val payment = createPayment()
+            payment.updateTransactionId("txn_old")
+            payment.fail("한도 초과")
+
+            // act
+            payment.resetForRetry()
+
+            // assert
+            assertAll(
+                { assertThat(payment.status).isEqualTo(PaymentStatus.REQUESTED) },
+                { assertThat(payment.transactionId).isNull() },
+                { assertThat(payment.failReason).isNull() },
+            )
+        }
+
+        @DisplayName("REQUEST_FAILED 상태에서 REQUESTED로 리셋된다.")
+        @Test
+        fun resetFromRequestFailed() {
+            // arrange
+            val payment = createPayment()
+            payment.markRequestFailed("타임아웃")
+
+            // act
+            payment.resetForRetry()
+
+            // assert
+            assertThat(payment.status).isEqualTo(PaymentStatus.REQUESTED)
+        }
+
+        @DisplayName("REQUESTED 상태에서 리셋하면 INVALID_PAYMENT_STATUS 예외가 발생한다.")
+        @Test
+        fun failWhenRequested() {
+            // arrange
+            val payment = createPayment()
+
+            // act & assert
+            val exception = assertThrows<PaymentException> {
+                payment.resetForRetry()
+            }
+            assertThat(exception.errorCode).isEqualTo(PaymentErrorCode.INVALID_PAYMENT_STATUS)
+        }
+
+        @DisplayName("APPROVED 상태에서 리셋하면 INVALID_PAYMENT_STATUS 예외가 발생한다.")
+        @Test
+        fun failWhenApproved() {
+            // arrange
+            val payment = createPayment()
+            payment.approve()
+
+            // act & assert
+            val exception = assertThrows<PaymentException> {
+                payment.resetForRetry()
+            }
+            assertThat(exception.errorCode).isEqualTo(PaymentErrorCode.INVALID_PAYMENT_STATUS)
+        }
+    }
+
+    @DisplayName("REQUEST_FAILED 복구")
+    @Nested
+    inner class RecoveryFromRequestFailed {
+
+        @DisplayName("REQUEST_FAILED 상태에서 approve가 가능하다.")
+        @Test
+        fun approveFromRequestFailed() {
+            // arrange
+            val payment = createPayment()
+            payment.markRequestFailed("타임아웃")
+
+            // act
+            payment.approve()
+
+            // assert
+            assertThat(payment.status).isEqualTo(PaymentStatus.APPROVED)
+        }
+
+        @DisplayName("REQUEST_FAILED 상태에서 fail이 가능하다.")
+        @Test
+        fun failFromRequestFailed() {
+            // arrange
+            val payment = createPayment()
+            payment.markRequestFailed("타임아웃")
+
+            // act
+            payment.fail("한도 초과")
+
+            // assert
+            assertThat(payment.status).isEqualTo(PaymentStatus.FAILED)
+        }
+
+        @DisplayName("REQUEST_FAILED 상태에서 transactionId 업데이트가 가능하다.")
+        @Test
+        fun updateTransactionIdFromRequestFailed() {
+            // arrange
+            val payment = createPayment()
+            payment.markRequestFailed("타임아웃")
+
+            // act
+            payment.updateTransactionId("txn_recovered")
+
+            // assert
+            assertThat(payment.transactionId).isEqualTo("txn_recovered")
+        }
+    }
 }

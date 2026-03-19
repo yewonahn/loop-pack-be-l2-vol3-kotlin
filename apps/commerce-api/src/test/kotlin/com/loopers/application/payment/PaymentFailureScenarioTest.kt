@@ -7,8 +7,10 @@ import com.loopers.domain.order.Order
 import com.loopers.domain.order.OrderRepository
 import com.loopers.domain.payment.CardType
 import com.loopers.domain.payment.Money
+import com.loopers.domain.payment.PaymentHistoryRepository
 import com.loopers.domain.payment.PaymentRepository
 import com.loopers.domain.payment.PaymentStatus
+import com.loopers.support.error.PaymentErrorCode
 import com.loopers.support.error.PaymentException
 import com.loopers.testcontainers.MySqlTestContainersConfig
 import com.loopers.utils.DatabaseCleanUp
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
@@ -32,6 +35,7 @@ class PaymentFailureScenarioTest @Autowired constructor(
     private val recoverPaymentUseCase: RecoverPaymentUseCase,
     private val orderRepository: OrderRepository,
     private val paymentRepository: PaymentRepository,
+    private val paymentHistoryRepository: PaymentHistoryRepository,
     private val databaseCleanUp: DatabaseCleanUp,
 ) {
     @MockkBean
@@ -62,6 +66,13 @@ class PaymentFailureScenarioTest @Autowired constructor(
             ),
         )
     }
+
+    private fun requestPaymentCommand(orderId: Long) = PaymentCommand.Request(
+        orderId = orderId,
+        userId = 1L,
+        cardType = CardType.SAMSUNG,
+        cardNo = "1234-5678-9012-3456",
+    )
 
     @DisplayName("콜백 중복 수신 시나리오")
     @Nested
@@ -107,30 +118,149 @@ class PaymentFailureScenarioTest @Autowired constructor(
         }
     }
 
+    @DisplayName("결제 재시도 시나리오")
+    @Nested
+    inner class RetryPayment {
+
+        @DisplayName("FAILED 상태의 결제를 재시도하면 기존 Payment가 REQUESTED로 리셋되고, 이력이 남는다.")
+        @Test
+        fun retryAfterFailed() {
+            // arrange - 1차 시도: 결제 실패
+            val order = createOrder()
+            val firstPayment = requestPayment(order, "txn_first")
+            handlePaymentCallbackUseCase.execute(
+                PaymentCommand.Callback(transactionId = "txn_first", status = "FAILED", reason = "한도 초과"),
+            )
+
+            // act - 2차 시도: 재시도
+            every { pgPaymentClient.requestPayment(any()) } returns PgPaymentResponse(
+                transactionId = "txn_second",
+                orderId = "test",
+                status = "REQUESTED",
+                message = null,
+            )
+            val retryResult = requestPaymentUseCase.execute(requestPaymentCommand(order.id))
+
+            // assert
+            assertAll(
+                { assertThat(retryResult.id).isEqualTo(firstPayment.id) },
+                { assertThat(retryResult.status).isEqualTo(PaymentStatus.REQUESTED) },
+                { assertThat(retryResult.pgOrderId).isEqualTo(firstPayment.pgOrderId) },
+                { assertThat(retryResult.transactionId).isEqualTo("txn_second") },
+            )
+
+            // assert - 이력 확인
+            val histories = paymentHistoryRepository.findAllByPaymentId(firstPayment.id)
+            assertAll(
+                { assertThat(histories).hasSize(1) },
+                { assertThat(histories[0].status).isEqualTo(PaymentStatus.FAILED) },
+                { assertThat(histories[0].failReason).isEqualTo("한도 초과") },
+            )
+        }
+
+        @DisplayName("REQUEST_FAILED 상태의 결제를 재시도하면 이력이 남고 새로 PG 요청한다.")
+        @Test
+        fun retryAfterRequestFailed() {
+            // arrange - 1차 시도: PG 타임아웃
+            val order = createOrder()
+            every { pgPaymentClient.requestPayment(any()) } throws RuntimeException("Read timed out")
+            val firstResult = requestPaymentUseCase.execute(requestPaymentCommand(order.id))
+            assertThat(firstResult.status).isEqualTo(PaymentStatus.REQUEST_FAILED)
+
+            // act - 2차 시도: 재시도 성공
+            every { pgPaymentClient.requestPayment(any()) } returns PgPaymentResponse(
+                transactionId = "txn_retry",
+                orderId = "test",
+                status = "REQUESTED",
+                message = null,
+            )
+            val retryResult = requestPaymentUseCase.execute(requestPaymentCommand(order.id))
+
+            // assert
+            assertAll(
+                { assertThat(retryResult.id).isEqualTo(firstResult.id) },
+                { assertThat(retryResult.status).isEqualTo(PaymentStatus.REQUESTED) },
+                { assertThat(retryResult.pgOrderId).isEqualTo(firstResult.pgOrderId) },
+            )
+        }
+
+        @DisplayName("APPROVED 상태의 주문에 재시도하면 ALREADY_PAID 예외가 발생한다.")
+        @Test
+        fun cannotRetryApprovedPayment() {
+            // arrange
+            val order = createOrder()
+            requestPayment(order, "txn_approved")
+            handlePaymentCallbackUseCase.execute(
+                PaymentCommand.Callback(transactionId = "txn_approved", status = "SUCCESS", reason = null),
+            )
+
+            // act & assert
+            val exception = assertThrows<PaymentException> {
+                requestPaymentUseCase.execute(requestPaymentCommand(order.id))
+            }
+            assertThat(exception.errorCode).isEqualTo(PaymentErrorCode.ALREADY_PAID)
+        }
+
+        @DisplayName("REQUESTED 상태의 주문에 중복 요청하면 ALREADY_IN_PROGRESS 예외가 발생한다.")
+        @Test
+        fun cannotDuplicateRequestedPayment() {
+            // arrange
+            val order = createOrder()
+            requestPayment(order, "txn_in_progress")
+
+            // act & assert
+            val exception = assertThrows<PaymentException> {
+                requestPaymentUseCase.execute(requestPaymentCommand(order.id))
+            }
+            assertThat(exception.errorCode).isEqualTo(PaymentErrorCode.ALREADY_IN_PROGRESS)
+        }
+    }
+
     @DisplayName("PG 장애 후 복구 시나리오")
     @Nested
     inner class FailureThenRecover {
 
-        @DisplayName("PG 타임아웃으로 REQUEST_FAILED된 결제는 transactionId가 없어 recover 불가, 상태가 유지된다.")
+        @DisplayName("transactionId가 없는 결제를 pgOrderId로 PG 조회하여 APPROVED로 복구한다.")
         @Test
-        fun cannotRecoverWithoutTransactionId() {
-            // arrange - PG 요청 실패 (타임아웃)
+        fun recoverByPgOrderIdWhenTransactionIdMissing() {
+            // arrange - PG 요청 실패 (타임아웃) → 하지만 PG는 실제 처리함
             val order = createOrder()
             every { pgPaymentClient.requestPayment(any()) } throws RuntimeException("Read timed out")
-            val paymentInfo = requestPaymentUseCase.execute(
-                PaymentCommand.Request(
-                    orderId = order.id,
-                    userId = 1L,
-                    cardType = CardType.SAMSUNG,
-                    cardNo = "1234-5678-9012-3456",
-                ),
-            )
+            val paymentInfo = requestPaymentUseCase.execute(requestPaymentCommand(order.id))
             assertThat(paymentInfo.status).isEqualTo(PaymentStatus.REQUEST_FAILED)
 
-            // act - recover 시도
+            // act - pgOrderId로 PG 조회
+            every { pgPaymentClient.getPaymentsByOrderId(paymentInfo.pgOrderId, any()) } returns listOf(
+                PgPaymentStatusResponse(
+                    transactionId = "txn_recovered",
+                    orderId = paymentInfo.pgOrderId,
+                    status = "SUCCESS",
+                    amount = "50000",
+                    reason = null,
+                ),
+            )
             val result = recoverPaymentUseCase.execute(paymentInfo.id)
 
-            // assert - transactionId가 없으므로 PG 조회 불가, 상태 유지
+            // assert
+            assertAll(
+                { assertThat(result.status).isEqualTo(PaymentStatus.APPROVED) },
+                { assertThat(result.transactionId).isEqualTo("txn_recovered") },
+            )
+        }
+
+        @DisplayName("pgOrderId로 PG 조회했지만 결제 내역이 없으면 상태가 유지된다.")
+        @Test
+        fun recoverByPgOrderIdButNoResult() {
+            // arrange
+            val order = createOrder()
+            every { pgPaymentClient.requestPayment(any()) } throws RuntimeException("Read timed out")
+            val paymentInfo = requestPaymentUseCase.execute(requestPaymentCommand(order.id))
+
+            // act - PG에 내역 없음
+            every { pgPaymentClient.getPaymentsByOrderId(paymentInfo.pgOrderId, any()) } returns emptyList()
+            val result = recoverPaymentUseCase.execute(paymentInfo.id)
+
+            // assert
             assertThat(result.status).isEqualTo(PaymentStatus.REQUEST_FAILED)
         }
 
@@ -170,14 +300,7 @@ class PaymentFailureScenarioTest @Autowired constructor(
             every { pgPaymentClient.requestPayment(any()) } throws PaymentException.pgSystemError()
 
             // act
-            val result = requestPaymentUseCase.execute(
-                PaymentCommand.Request(
-                    orderId = order.id,
-                    userId = 1L,
-                    cardType = CardType.SAMSUNG,
-                    cardNo = "1234-5678-9012-3456",
-                ),
-            )
+            val result = requestPaymentUseCase.execute(requestPaymentCommand(order.id))
 
             // assert
             assertThat(result.status).isEqualTo(PaymentStatus.REQUEST_FAILED)
@@ -191,14 +314,7 @@ class PaymentFailureScenarioTest @Autowired constructor(
             every { pgPaymentClient.requestPayment(any()) } throws RuntimeException("Connection refused")
 
             // act
-            val result = requestPaymentUseCase.execute(
-                PaymentCommand.Request(
-                    orderId = order.id,
-                    userId = 1L,
-                    cardType = CardType.SAMSUNG,
-                    cardNo = "1234-5678-9012-3456",
-                ),
-            )
+            val result = requestPaymentUseCase.execute(requestPaymentCommand(order.id))
 
             // assert
             assertAll(
