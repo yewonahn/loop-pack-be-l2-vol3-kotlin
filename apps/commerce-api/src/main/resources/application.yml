@@ -32,7 +32,16 @@ pg:
 resilience4j:
   circuitbreaker:
     instances:
-      pgPayment:
+      pgPaymentRequest: # 결제 요청용 CB — 결제 실패가 조회를 차단하지 않도록 분리
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 4s
+        slow-call-rate-threshold: 80
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        minimum-number-of-calls: 5
+      pgPaymentQuery: # 상태 조회용 CB — 결제 CB Open 시에도 복구/조회 가능
         sliding-window-type: COUNT_BASED
         sliding-window-size: 10
         failure-rate-threshold: 50
@@ -43,7 +52,14 @@ resilience4j:
         minimum-number-of-calls: 5
   retry:
     instances:
-      pgPayment:
+      pgPaymentRequest:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - feign.RetryableException
+          - java.net.SocketTimeoutException
+          - java.net.ConnectException
+      pgPaymentQuery:
         max-attempts: 3
         wait-duration: 500ms
         retry-exceptions:

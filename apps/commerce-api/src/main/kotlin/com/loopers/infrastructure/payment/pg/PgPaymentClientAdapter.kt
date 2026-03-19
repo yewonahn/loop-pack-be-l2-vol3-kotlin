@@ -18,8 +18,8 @@ class PgPaymentClientAdapter(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Retry(name = "pgPayment")
-    @CircuitBreaker(name = "pgPayment", fallbackMethod = "requestPaymentFallback")
+    @Retry(name = "pgPaymentRequest")
+    @CircuitBreaker(name = "pgPaymentRequest", fallbackMethod = "requestPaymentFallback")
     override fun requestPayment(request: PgPaymentRequest): PgPaymentResponse {
         return pgFeignClient.requestPayment(
             userId = request.orderId.hashCode().toLong(),
@@ -27,14 +27,14 @@ class PgPaymentClientAdapter(
         )
     }
 
-    @Retry(name = "pgPayment")
-    @CircuitBreaker(name = "pgPayment", fallbackMethod = "getPaymentByTransactionIdFallback")
+    @Retry(name = "pgPaymentQuery")
+    @CircuitBreaker(name = "pgPaymentQuery", fallbackMethod = "getPaymentByTransactionIdFallback")
     override fun getPaymentByTransactionId(transactionId: String, userId: Long): PgPaymentStatusResponse {
         return pgFeignClient.getPaymentByTransactionId(transactionId, userId)
     }
 
-    @Retry(name = "pgPayment")
-    @CircuitBreaker(name = "pgPayment", fallbackMethod = "getPaymentsByOrderIdFallback")
+    @Retry(name = "pgPaymentQuery")
+    @CircuitBreaker(name = "pgPaymentQuery", fallbackMethod = "getPaymentsByOrderIdFallback")
     override fun getPaymentsByOrderId(pgOrderId: String, userId: Long): List<PgPaymentStatusResponse> {
         return pgFeignClient.getPaymentsByOrderId(pgOrderId, userId)
     }
