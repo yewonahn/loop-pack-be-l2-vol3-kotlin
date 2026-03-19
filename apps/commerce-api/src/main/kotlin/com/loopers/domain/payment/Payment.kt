@@ -25,7 +25,7 @@ class Payment private constructor(
     status: PaymentStatus,
 ) : BaseEntity() {
 
-    @Column(name = "order_id", nullable = false)
+    @Column(name = "order_id", nullable = false, unique = true)
     val orderId: Long = orderId
 
     @Column(name = "user_id", nullable = false)
@@ -63,18 +63,18 @@ class Payment private constructor(
         protected set
 
     fun updateTransactionId(transactionId: String) {
-        validateRequested()
+        validateNotTerminal()
         this.transactionId = transactionId
     }
 
     fun approve(paidAt: ZonedDateTime = ZonedDateTime.now()) {
-        validateRequested()
+        validateNotTerminal()
         this.status = PaymentStatus.APPROVED
         this.paidAt = paidAt
     }
 
     fun fail(reason: String) {
-        validateRequested()
+        validateNotTerminal()
         this.status = PaymentStatus.FAILED
         this.failReason = reason
     }
@@ -83,6 +83,22 @@ class Payment private constructor(
         validateRequested()
         this.status = PaymentStatus.REQUEST_FAILED
         this.failReason = reason
+    }
+
+    fun resetForRetry() {
+        if (status != PaymentStatus.FAILED && status != PaymentStatus.REQUEST_FAILED) {
+            throw PaymentException.invalidStatus()
+        }
+        this.status = PaymentStatus.REQUESTED
+        this.transactionId = null
+        this.failReason = null
+        this.paidAt = null
+    }
+
+    private fun validateNotTerminal() {
+        if (status.isTerminal()) {
+            throw PaymentException.invalidStatus()
+        }
     }
 
     private fun validateRequested() {

@@ -3,7 +3,10 @@ package com.loopers.application.payment
 import com.loopers.domain.order.OrderRepository
 import com.loopers.domain.payment.Money
 import com.loopers.domain.payment.Payment
+import com.loopers.domain.payment.PaymentHistory
+import com.loopers.domain.payment.PaymentHistoryRepository
 import com.loopers.domain.payment.PaymentRepository
+import com.loopers.domain.payment.PaymentStatus
 import com.loopers.support.error.PaymentException
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -11,12 +14,28 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class PaymentTransactionManager(
     private val paymentRepository: PaymentRepository,
+    private val paymentHistoryRepository: PaymentHistoryRepository,
     private val orderRepository: OrderRepository,
 ) {
     @Transactional
-    fun savePayment(command: PaymentCommand.Request): Payment {
+    fun saveOrResetPayment(command: PaymentCommand.Request): Payment {
         val order = orderRepository.findByIdOrNull(command.orderId)
             ?: throw PaymentException.orderNotFound()
+
+        val existing = paymentRepository.findByOrderId(order.id)
+
+        if (existing != null) {
+            return when (existing.status) {
+                PaymentStatus.APPROVED -> throw PaymentException.alreadyPaid()
+                PaymentStatus.REQUESTED -> throw PaymentException.alreadyInProgress()
+                PaymentStatus.FAILED,
+                PaymentStatus.REQUEST_FAILED -> {
+                    paymentHistoryRepository.save(PaymentHistory.from(existing))
+                    existing.resetForRetry()
+                    existing
+                }
+            }
+        }
 
         val payment = Payment.create(
             orderId = order.id,
@@ -45,12 +64,16 @@ class PaymentTransactionManager(
     }
 
     @Transactional
-    fun applyPgResult(paymentId: Long, pgStatus: String, reason: String?): PaymentInfo {
+    fun applyPgResult(paymentId: Long, pgStatus: String, reason: String?, transactionId: String? = null): PaymentInfo {
         val payment = paymentRepository.findByIdOrNull(paymentId)
             ?: throw PaymentException.notFound()
 
         if (payment.status.isTerminal()) {
             return PaymentInfo.from(payment)
+        }
+
+        if (transactionId != null && payment.transactionId == null) {
+            payment.updateTransactionId(transactionId)
         }
 
         when (pgStatus) {

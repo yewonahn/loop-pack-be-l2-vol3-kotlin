@@ -19,5 +19,9 @@ class PaymentException private constructor(
             PaymentException(PaymentErrorCode.PG_REQUEST_FAILED, cause = cause)
 
         fun pgSystemError() = PaymentException(PaymentErrorCode.PG_SYSTEM_ERROR)
+
+        fun alreadyPaid() = PaymentException(PaymentErrorCode.ALREADY_PAID)
+
+        fun alreadyInProgress() = PaymentException(PaymentErrorCode.ALREADY_IN_PROGRESS)
     }
 }

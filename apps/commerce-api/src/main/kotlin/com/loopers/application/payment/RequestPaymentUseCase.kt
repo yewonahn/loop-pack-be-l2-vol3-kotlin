@@ -15,7 +15,7 @@ class RequestPaymentUseCase(
     private val log = LoggerFactory.getLogger(javaClass)
 
     fun execute(command: PaymentCommand.Request): PaymentInfo {
-        val payment = paymentTransactionManager.savePayment(command)
+        val payment = paymentTransactionManager.saveOrResetPayment(command)
 
         try {
             val pgResponse = pgPaymentClient.requestPayment(

@@ -22,7 +22,7 @@ class HandlePaymentCallbackUseCase(
         val payment = paymentRepository.findByTransactionId(command.transactionId)
             ?: throw PaymentException.notFound()
 
-        if (payment.status != PaymentStatus.REQUESTED) {
+        if (payment.status.isTerminal()) {
             log.info(
                 "이미 처리된 결제 콜백 무시 [transactionId={}, status={}]",
                 command.transactionId, payment.status,

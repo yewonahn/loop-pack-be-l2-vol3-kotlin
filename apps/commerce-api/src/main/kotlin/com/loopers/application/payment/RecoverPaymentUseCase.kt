@@ -23,18 +23,36 @@ class RecoverPaymentUseCase(
             return PaymentInfo.from(payment)
         }
 
-        val transactionId = payment.transactionId
-        if (transactionId == null) {
-            log.info("transactionId가 없는 결제는 PG 조회 불가 [paymentId={}]", paymentId)
+        return try {
+            val transactionId = payment.transactionId
+            if (transactionId != null) {
+                val pgStatus = pgPaymentClient.getPaymentByTransactionId(transactionId, payment.userId)
+                paymentTransactionManager.applyPgResult(paymentId, pgStatus.status, pgStatus.reason)
+            } else {
+                recoverByPgOrderId(paymentId, payment.pgOrderId, payment.userId)
+            }
+        } catch (e: Exception) {
+            log.warn("PG 상태 확인 실패 [paymentId={}]: {}", paymentId, e.message)
+            PaymentInfo.from(payment)
+        }
+    }
+
+    private fun recoverByPgOrderId(paymentId: Long, pgOrderId: String, userId: Long): PaymentInfo {
+        val pgStatuses = pgPaymentClient.getPaymentsByOrderId(pgOrderId, userId)
+
+        if (pgStatuses.isEmpty()) {
+            log.info("PG에 결제 내역 없음 [paymentId={}, pgOrderId={}]", paymentId, pgOrderId)
+            val payment = paymentRepository.findByIdOrNull(paymentId)
+                ?: throw PaymentException.notFound()
             return PaymentInfo.from(payment)
         }
 
-        return try {
-            val pgStatus = pgPaymentClient.getPaymentByTransactionId(transactionId, payment.userId)
-            paymentTransactionManager.applyPgResult(paymentId, pgStatus.status, pgStatus.reason)
-        } catch (e: Exception) {
-            log.warn("PG 상태 확인 실패 [paymentId={}, transactionId={}]: {}", paymentId, transactionId, e.message)
-            PaymentInfo.from(payment)
-        }
+        val latest = pgStatuses.last()
+        return paymentTransactionManager.applyPgResult(
+            paymentId = paymentId,
+            pgStatus = latest.status,
+            reason = latest.reason,
+            transactionId = latest.transactionId,
+        )
     }
 }
