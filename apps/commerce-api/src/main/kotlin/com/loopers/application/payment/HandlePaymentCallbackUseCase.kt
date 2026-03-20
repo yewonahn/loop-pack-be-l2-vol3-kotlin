@@ -1,7 +1,6 @@
 package com.loopers.application.payment
 
 import com.loopers.domain.payment.PaymentRepository
-import com.loopers.domain.payment.PaymentStatus
 import com.loopers.support.error.PaymentException
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
@@ -30,12 +29,21 @@ class HandlePaymentCallbackUseCase(
             return PaymentInfo.from(payment)
         }
 
-        if (command.status == PG_STATUS_SUCCESS) {
-            payment.approve()
+        val updatedCount = if (command.status == PG_STATUS_SUCCESS) {
+            paymentRepository.approveIfNotTerminal(payment.id)
         } else {
-            payment.fail(command.reason ?: "PG 결제 실패")
+            paymentRepository.failIfNotTerminal(payment.id, command.reason ?: "PG 결제 실패")
         }
 
-        return PaymentInfo.from(payment)
+        if (updatedCount == 0) {
+            log.info(
+                "동시 콜백 처리로 이미 반영됨 [transactionId={}, paymentId={}]",
+                command.transactionId, payment.id,
+            )
+        }
+
+        val updated = paymentRepository.findByIdOrNull(payment.id)
+            ?: throw PaymentException.notFound()
+        return PaymentInfo.from(updated)
     }
 }

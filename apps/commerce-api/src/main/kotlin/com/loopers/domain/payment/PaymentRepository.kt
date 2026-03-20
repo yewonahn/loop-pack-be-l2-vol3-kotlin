@@ -10,4 +10,6 @@ interface PaymentRepository {
     fun findAllByStatus(status: PaymentStatus): List<Payment>
     fun findAllRecoveryTargets(createdBefore: ZonedDateTime): List<Payment>
     fun save(payment: Payment): Payment
+    fun approveIfNotTerminal(paymentId: Long): Int
+    fun failIfNotTerminal(paymentId: Long, failReason: String): Int
 }

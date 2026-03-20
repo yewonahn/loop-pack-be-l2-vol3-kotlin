@@ -38,4 +38,12 @@ class PaymentRepositoryImpl(
     override fun save(payment: Payment): Payment {
         return paymentJpaRepository.save(payment)
     }
+
+    override fun approveIfNotTerminal(paymentId: Long): Int {
+        return paymentJpaRepository.approveIfNotTerminal(paymentId)
+    }
+
+    override fun failIfNotTerminal(paymentId: Long, failReason: String): Int {
+        return paymentJpaRepository.failIfNotTerminal(paymentId, failReason)
+    }
 }
