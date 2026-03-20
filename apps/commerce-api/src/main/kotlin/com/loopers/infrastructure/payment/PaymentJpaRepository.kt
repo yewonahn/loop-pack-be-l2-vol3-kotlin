@@ -32,4 +32,11 @@ interface PaymentJpaRepository : JpaRepository<Payment, Long> {
         nativeQuery = true,
     )
     fun failIfNotTerminal(@Param("paymentId") paymentId: Long, @Param("failReason") failReason: String): Int
+
+    @Modifying(clearAutomatically = true)
+    @Query(
+        value = "UPDATE payments SET transaction_id = :transactionId WHERE id = :paymentId AND transaction_id IS NULL",
+        nativeQuery = true,
+    )
+    fun updateTransactionIdIfAbsent(@Param("paymentId") paymentId: Long, @Param("transactionId") transactionId: String): Int
 }

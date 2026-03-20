@@ -12,4 +12,5 @@ interface PaymentRepository {
     fun save(payment: Payment): Payment
     fun approveIfNotTerminal(paymentId: Long): Int
     fun failIfNotTerminal(paymentId: Long, failReason: String): Int
+    fun updateTransactionIdIfAbsent(paymentId: Long, transactionId: String): Int
 }

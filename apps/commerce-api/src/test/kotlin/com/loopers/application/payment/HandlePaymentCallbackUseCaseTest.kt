@@ -20,6 +20,8 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 
 @SpringBootTest
 @Import(MySqlTestContainersConfig::class)
@@ -114,6 +116,43 @@ class HandlePaymentCallbackUseCaseTest @Autowired constructor(
 
             // assert
             assertThat(result.status).isEqualTo(PaymentStatus.APPROVED)
+        }
+    }
+
+    @DisplayName("동시 콜백 방어 검증")
+    @Nested
+    inner class ConcurrentCallback {
+
+        @DisplayName("동일 결제에 성공/실패 콜백이 동시에 도착하면, 하나만 반영되고 최종 상태는 터미널이다.")
+        @Test
+        fun onlyOneCallbackApplied() {
+            // arrange
+            createPaymentWithTransaction()
+            val latch = CountDownLatch(1)
+            val executor = Executors.newFixedThreadPool(2)
+            // act — 두 스레드가 동시에 콜백 처리
+            val successFuture = executor.submit<PaymentInfo> {
+                latch.await()
+                handlePaymentCallbackUseCase.execute(
+                    PaymentCommand.Callback(transactionId = "txn_callback_test", status = "SUCCESS", reason = null),
+                )
+            }
+            val failFuture = executor.submit<PaymentInfo> {
+                latch.await()
+                handlePaymentCallbackUseCase.execute(
+                    PaymentCommand.Callback(transactionId = "txn_callback_test", status = "FAILED", reason = "한도 초과"),
+                )
+            }
+
+            latch.countDown()
+
+            val result1 = successFuture.get()
+            val result2 = failFuture.get()
+            executor.shutdown()
+
+            // assert — 최종 DB 상태는 APPROVED 또는 FAILED 중 하나 (터미널)
+            val payment = paymentRepository.findByIdOrNull(result1.id)!!
+            assertThat(payment.status.isTerminal()).isTrue()
         }
     }
 }

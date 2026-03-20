@@ -47,12 +47,12 @@ class RecoverPaymentUseCase(
             return PaymentInfo.from(payment)
         }
 
-        val latest = pgStatuses.last()
+        val target = pgStatuses.find { it.status == "SUCCESS" } ?: pgStatuses.last()
         return paymentTransactionManager.applyPgResult(
             paymentId = paymentId,
-            pgStatus = latest.status,
-            reason = latest.reason,
-            transactionId = latest.transactionId,
+            pgStatus = target.status,
+            reason = target.reason,
+            transactionId = target.transactionId,
         )
     }
 }

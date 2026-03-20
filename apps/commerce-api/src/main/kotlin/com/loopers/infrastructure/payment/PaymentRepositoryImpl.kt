@@ -46,4 +46,8 @@ class PaymentRepositoryImpl(
     override fun failIfNotTerminal(paymentId: Long, failReason: String): Int {
         return paymentJpaRepository.failIfNotTerminal(paymentId, failReason)
     }
+
+    override fun updateTransactionIdIfAbsent(paymentId: Long, transactionId: String): Int {
+        return paymentJpaRepository.updateTransactionIdIfAbsent(paymentId, transactionId)
+    }
 }

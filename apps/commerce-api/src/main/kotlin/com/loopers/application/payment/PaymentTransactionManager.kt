@@ -65,23 +65,18 @@ class PaymentTransactionManager(
 
     @Transactional
     fun applyPgResult(paymentId: Long, pgStatus: String, reason: String?, transactionId: String? = null): PaymentInfo {
-        val payment = paymentRepository.findByIdOrNull(paymentId)
-            ?: throw PaymentException.notFound()
-
-        if (payment.status.isTerminal()) {
-            return PaymentInfo.from(payment)
-        }
-
-        if (transactionId != null && payment.transactionId == null) {
-            payment.updateTransactionId(transactionId)
+        if (transactionId != null) {
+            paymentRepository.updateTransactionIdIfAbsent(paymentId, transactionId)
         }
 
         when (pgStatus) {
-            PG_STATUS_SUCCESS -> payment.approve()
+            PG_STATUS_SUCCESS -> paymentRepository.approveIfNotTerminal(paymentId)
             PG_STATUS_PENDING, PG_STATUS_REQUESTED -> { }
-            else -> payment.fail(reason ?: "PG 결제 실패")
+            else -> paymentRepository.failIfNotTerminal(paymentId, reason ?: "PG 결제 실패")
         }
 
+        val payment = paymentRepository.findByIdOrNull(paymentId)
+            ?: throw PaymentException.notFound()
         return PaymentInfo.from(payment)
     }
 
