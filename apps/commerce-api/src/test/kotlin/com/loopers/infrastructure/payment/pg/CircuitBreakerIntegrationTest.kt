@@ -148,6 +148,29 @@ class CircuitBreakerIntegrationTest @Autowired constructor(
         }
     }
 
+    @DisplayName("Slow Call 검증 (slow-call-duration-threshold: 4s, slow-call-rate-threshold: 80%)")
+    @Nested
+    inner class SlowCall {
+
+        @DisplayName("5건 모두 4초 이상 걸리면(slow rate 100% > 80%) CB가 OPEN된다.")
+        @Test
+        fun opensWhenSlowCallRateExceedsThreshold() {
+            every { pgFeignClient.requestPayment(any(), any()) } answers {
+                Thread.sleep(4100)
+                successResponse()
+            }
+
+            repeat(5) {
+                pgPaymentClient.requestPayment(dummyRequest())
+            }
+
+            assertAll(
+                { assertThat(requestCb.state).isEqualTo(CircuitBreaker.State.OPEN) },
+                { assertThat(requestCb.metrics.numberOfSlowCalls).isGreaterThanOrEqualTo(5) },
+            )
+        }
+    }
+
     @DisplayName("Retry + CircuitBreaker 연동 검증")
     @Nested
     inner class RetryCircuitBreakerIntegration {
