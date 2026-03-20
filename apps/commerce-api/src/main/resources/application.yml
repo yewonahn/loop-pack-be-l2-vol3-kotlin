@@ -31,6 +31,7 @@ pg:
 
 resilience4j:
   circuitbreaker:
+    circuitBreakerAspectOrder: 1 # CB가 바깥 — retry 3회 소진 후 최종 결과만 실패 1건으로 카운트
     instances:
       pgPaymentRequest: # 결제 요청용 CB — 결제 실패가 조회를 차단하지 않도록 분리
         sliding-window-type: COUNT_BASED
@@ -51,6 +52,7 @@ resilience4j:
         permitted-number-of-calls-in-half-open-state: 3
         minimum-number-of-calls: 5
   retry:
+    retryAspectOrder: 2 # Retry가 안쪽 — PG 호출 실패 시 먼저 재시도
     instances:
       pgPaymentRequest:
         max-attempts: 3
